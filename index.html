@@ -540,7 +540,7 @@
 
   <!-- INTRO -->
   <div id="intro-screen" class="screen active">
-    <p class="intro-eyebrow">BEHAVIORAL PROFILING MODULE — INITIALIZED</p>
+    <p class="intro-eyebrow">BEHAVIORAL PROFILING MODULE: INITIALIZED</p>
 
     <svg class="hexagon-icon" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
       <polygon points="36,4 64,20 64,52 36,68 8,52 8,20" stroke="#0066aa" stroke-width="1" fill="rgba(0,100,200,0.06)"/>
@@ -584,7 +584,7 @@
 
   <!-- LOADING -->
   <div id="loading-screen" class="screen">
-    <p class="loading-title">PROCESSING — PLEASE STAND BY</p>
+    <p class="loading-title">PROCESSING: PLEASE STAND BY</p>
     <div class="loading-list" id="loading-list"></div>
     <p class="loading-pct" id="loading-pct">0%</p>
   </div>
@@ -594,8 +594,8 @@
   <div id="results-screen" class="screen">
     <div class="results-header">
       <div class="results-header-left">
-        <p class="eyebrow">PROFILE GENERATED — CONFIDENTIAL</p>
-        <p class="name">SUBJECT PROFILE #<span id="profile-id">—</span></p>
+        <p class="eyebrow">PROFILE GENERATED - CONFIDENTIAL</p>
+        <p class="name">SUBJECT PROFILE #<span id="profile-id">-</span></p>
       </div>
       <div class="results-header-right" id="profile-meta"></div>
     </div>
@@ -610,7 +610,7 @@
       </div>
     </div>
     <div class="data-exhaust" id="data-exhaust"></div>
-    <button class="restart-btn" onclick="restart()">[ CLEAR SESSION — RESTART ]</button>
+    <button class="restart-btn" onclick="restart()">[ CLEAR SESSION: RESTART ]</button>
   </div>
 
 </div>
@@ -672,7 +672,7 @@ const questions = [
   { text: "How would you describe your social media use?", options: ["Multiple times a day","Once a day","A few times a week","I avoid it"], key: "socialMedia" },
   { text: "When you're anxious or stressed, what do you typically do?", options: ["Reach for my phone","Eat or drink something","Exercise or move","Isolate and withdraw"], key: "stress" },
   { text: "How often do you read the terms and conditions before agreeing?", options: ["Never","Rarely","Sometimes","Always"], key: "tos" },
-  { text: "What's your gut feeling right now, answering these questions?", options: ["Comfortable — they're harmless","Slightly uneasy","I see where this is going","I want to stop"], key: "feeling" }
+  { text: "What's your gut feeling right now, answering these questions?", options: ["Comfortable; they're harmless","Slightly uneasy","I see where this is going","I want to stop"], key: "feeling" }
 ];
 
 const loadingSteps = [
@@ -757,7 +757,7 @@ function getPredictions() {
   // clamp helper
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, Math.round(v)));
 
-  // ANXIETY — stress coping, insomnia behaviour, phone habits, wake time
+  // ANXIETY: stress coping, insomnia behaviour, phone habits, wake time
   let anxScore = 50;
   if (a.stress==="Reach for my phone") anxScore += 22;
   else if (a.stress==="Isolate and withdraw") anxScore += 18;
@@ -771,10 +771,10 @@ function getPredictions() {
   else if (a.phoneMorning==="Never") anxScore -= 6;
   if (a.wakeTime==="Before 6am") anxScore += 4; // early rising can signal rumination
   if (a.feeling==="I want to stop") anxScore += 6;
-  else if (a.feeling==="Comfortable — they're harmless") anxScore -= 4;
+  else if (a.feeling==="Comfortable; they're harmless") anxScore -= 4;
   const anxious = clamp(anxScore, 18, 96);
 
-  // FINANCIAL VULNERABILITY — finances, payment, impulse, commute
+  // FINANCIAL VULNERABILITY - finances, payment, impulse, commute
   let finScore = 45;
   if (a.finances==="Stressful to think about") finScore += 28;
   else if (a.finances==="I prefer not to think about it") finScore += 22;
@@ -789,7 +789,7 @@ function getPredictions() {
   else if (a.commute==="Drive alone") finScore += 2;
   const finStress = clamp(finScore, 15, 95);
 
-  // IMPULSE PURCHASING — impulse, payment, free time, social media, insomnia
+  // IMPULSE PURCHASING - impulse, payment, free time, social media, insomnia
   let impScore = 40;
   if (a.impulse==="Frequently") impScore += 32;
   else if (a.impulse==="Sometimes") impScore += 18;
@@ -802,7 +802,7 @@ function getPredictions() {
   if (a.insomnia==="Scroll on my phone") impScore += 5; // late-night browsing → purchases
   const impulseBuy = clamp(impScore, 12, 97);
 
-  // AD RESPONSIVENESS — social media, insomnia, phone habits, payment, feeling
+  // AD RESPONSIVENESS: social media, insomnia, phone habits, payment, feeling
   let adScore = 45;
   if (a.socialMedia==="Multiple times a day") adScore += 24;
   else if (a.socialMedia==="Once a day") adScore += 12;
@@ -813,10 +813,10 @@ function getPredictions() {
   else if (a.phoneMorning==="Usually") adScore += 5;
   else if (a.phoneMorning==="Never") adScore -= 8;
   if (a.payment==="Phone/digital wallet") adScore += 6;
-  if (a.feeling==="Comfortable — they're harmless") adScore += 5; // low guard = more susceptible
+  if (a.feeling==="Comfortable; they're harmless") adScore += 5; // low guard = more susceptible
   const adSusc = clamp(adScore, 14, 96);
 
-  // CONSENT IGNORANCE — tos, phone habits, feeling, social media
+  // CONSENT IGNORANCE: tos, phone habits, feeling, social media
   let tosScore = 50;
   if (a.tos==="Never") tosScore += 32;
   else if (a.tos==="Rarely") tosScore += 18;
@@ -824,13 +824,13 @@ function getPredictions() {
   else tosScore -= 22; // always reads
   if (a.phoneMorning==="Always") tosScore += 8; // habitual phone use = habit of tapping agree
   else if (a.phoneMorning==="Never") tosScore -= 6;
-  if (a.feeling==="Comfortable — they're harmless") tosScore += 8;
+  if (a.feeling==="Comfortable; they're harmless") tosScore += 8;
   else if (a.feeling==="I see where this is going") tosScore -= 10;
   else if (a.feeling==="I want to stop") tosScore -= 6;
   if (a.socialMedia==="Multiple times a day") tosScore += 6; // more accounts = more ToS clicked past
   const privacyIgnore = clamp(tosScore, 10, 96);
 
-  // POLITICAL ENGAGEMENT — free time, social media, commute, feeling
+  // POLITICAL ENGAGEMENt: free time, social media, commute, feeling
   let polScore = 45;
   if (a.socialMedia==="Multiple times a day") polScore += 16;
   else if (a.socialMedia==="Once a day") polScore += 8;
