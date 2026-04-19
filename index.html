@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DATACORE — Consumer Analytics Module</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --blue: #00aaff;
+    --blue-dim: #0066aa;
+    --blue-faint: rgba(0,170,255,0.08);
+    --blue-glow: rgba(0,170,255,0.25);
+    --bg: #040810;
+    --bg2: #060d1a;
+    --bg3: #0a1628;
+    --text: #c8dff5;
+    --text-dim: #5a7a99;
+    --text-faint: #2a3f55;
+    --border: rgba(0,150,255,0.18);
+    --border-bright: rgba(0,170,255,0.45);
+    --mono: 'Share Tech Mono', monospace;
+    --display: 'Rajdhani', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,120,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,120,255,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* scanline overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  canvas#particles {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.35;
+  }
+
+  .container {
+    position: relative;
+    z-index: 2;
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+    min-height: 100vh;
+  }
+
+  .top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.75rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .top-bar-left {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: var(--blue);
+    text-shadow: 0 0 8px var(--blue-glow);
+  }
+
+  .top-bar-right {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+  }
+
+  .blink {
+    animation: blink 1.2s step-end infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  .screen { display: none; }
+  .screen.active { display: block; animation: fadeIn 0.4s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+
+  /* ── INTRO ── */
+  .intro-eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--blue-dim);
+    margin-bottom: 2rem;
+    text-align: center;
+  }
+
+  .intro-title {
+    font-family: var(--display);
+    font-size: 42px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-align: center;
+    color: #fff;
+    text-shadow: 0 0 30px var(--blue-glow), 0 0 60px rgba(0,100,200,0.2);
+    margin-bottom: 0.5rem;
+    line-height: 1.1;
+  }
+
+  .intro-sub {
+    font-family: var(--display);
+    font-size: 14px;
+    color: var(--text-dim);
+    text-align: center;
+    letter-spacing: 0.08em;
+    margin-bottom: 3rem;
+  }
+
+  .hexagon-icon {
+    display: block;
+    margin: 0 auto 2rem;
+    width: 72px;
+    height: 72px;
+  }
+
+  .intro-body {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.8;
+    text-align: center;
+    max-width: 460px;
+    margin: 0 auto 2.5rem;
+    letter-spacing: 0.02em;
+  }
+
+  .start-btn {
+    display: block;
+    margin: 0 auto;
+    padding: 14px 48px;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    color: var(--blue);
+    background: transparent;
+    border: 1px solid var(--blue-dim);
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s;
+    text-shadow: 0 0 8px var(--blue-glow);
+    box-shadow: 0 0 12px rgba(0,100,200,0.1), inset 0 0 12px rgba(0,100,200,0.05);
+  }
+  .start-btn::before, .start-btn::after {
+    content: '';
+    position: absolute;
+    width: 8px; height: 8px;
+    border-color: var(--blue);
+    border-style: solid;
+    transition: all 0.2s;
+  }
+  .start-btn::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+  .start-btn::after  { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+  .start-btn:hover {
+    color: #fff;
+    border-color: var(--blue);
+    box-shadow: 0 0 24px var(--blue-glow), inset 0 0 20px rgba(0,150,255,0.08);
+    text-shadow: 0 0 12px var(--blue);
+  }
+
+  .consent-note {
+    text-align: center;
+    font-size: 10px;
+    color: var(--text-faint);
+    letter-spacing: 0.08em;
+    margin-top: 1.5rem;
+  }
+
+  /* ── QUESTION ── */
+  .q-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: var(--text-dim);
+  }
+  .q-meta .live { color: var(--blue); text-shadow: 0 0 6px var(--blue-glow); }
+
+  .progress-track {
+    height: 2px;
+    background: var(--bg3);
+    margin-bottom: 2.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--blue-dim), var(--blue));
+    box-shadow: 0 0 8px var(--blue);
+    transition: width 0.5s ease;
+    width: 0%;
+  }
+
+  .data-log {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--text-faint);
+    margin-bottom: 1.5rem;
+    min-height: 14px;
+  }
+
+  .q-number {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--blue-dim);
+    margin-bottom: 0.5rem;
+  }
+
+  .q-text {
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 500;
+    color: #e8f4ff;
+    margin-bottom: 2rem;
+    line-height: 1.4;
+    letter-spacing: 0.02em;
+  }
+
+  .options { display: grid; gap: 8px; }
+
+  .opt-btn {
+    padding: 13px 18px;
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    background: var(--bg2);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    transition: all 0.18s;
+    position: relative;
+    overflow: hidden;
+  }
+  .opt-btn::before {
+    content: '> ';
+    color: var(--blue-dim);
+    opacity: 0;
+    transition: opacity 0.18s;
+  }
+  .opt-btn:hover {
+    border-color: var(--blue-dim);
+    color: var(--text);
+    background: var(--blue-faint);
+    box-shadow: 0 0 12px rgba(0,100,200,0.1);
+  }
+  .opt-btn:hover::before { opacity: 1; }
+  .opt-btn.selected {
+    border-color: var(--blue);
+    color: var(--blue);
+    background: var(--blue-faint);
+    text-shadow: 0 0 6px var(--blue-glow);
+    box-shadow: 0 0 16px rgba(0,150,255,0.15);
+  }
+  .opt-btn.selected::before { opacity: 1; color: var(--blue); }
+
+  .collecting-msg {
+    margin-top: 1.25rem;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: var(--blue-dim);
+    text-shadow: 0 0 6px var(--blue-glow);
+    min-height: 16px;
+    text-align: right;
+  }
+
+  /* ── LOADING ── */
+  .loading-title {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--blue);
+    text-align: center;
+    margin-bottom: 2rem;
+    text-shadow: 0 0 8px var(--blue-glow);
+  }
+
+  .loading-list {
+    max-width: 440px;
+    margin: 0 auto 2rem;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+  }
+
+  .load-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    font-size: 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-dim);
+    letter-spacing: 0.04em;
+    transition: color 0.3s;
+  }
+  .load-item:last-child { border-bottom: none; }
+  .load-item.done { color: var(--text); }
+  .load-item .status {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--text-faint);
+    transition: all 0.3s;
+  }
+  .load-item.done .status {
+    color: var(--blue);
+    text-shadow: 0 0 6px var(--blue-glow);
+  }
+
+  .loading-pct {
+    text-align: center;
+    font-family: var(--display);
+    font-size: 48px;
+    font-weight: 300;
+    color: var(--blue);
+    text-shadow: 0 0 20px var(--blue-glow);
+    letter-spacing: 0.1em;
+  }
+
+  /* ── RESULTS ── */
+  .results-header {
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    padding: 16px 20px;
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .results-header-left .eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: var(--blue);
+    text-shadow: 0 0 6px var(--blue-glow);
+    margin-bottom: 4px;
+  }
+  .results-header-left .name {
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: 0.06em;
+  }
+  .results-header-right {
+    text-align: right;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    line-height: 1.8;
+  }
+
+  .pred-card {
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    padding: 14px 18px;
+    margin-bottom: 6px;
+    transition: border-color 0.3s;
+  }
+  .pred-card:hover { border-color: var(--border-bright); }
+
+  .pred-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+  }
+  .pred-category {
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    color: var(--blue-dim);
+  }
+  .pred-pct {
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--blue);
+    text-shadow: 0 0 10px var(--blue-glow);
+    transition: text-shadow 0.5s;
+  }
+  .pred-label {
+    font-family: var(--display);
+    font-size: 15px;
+    font-weight: 500;
+    color: #d0e8ff;
+    margin-bottom: 10px;
+    letter-spacing: 0.02em;
+  }
+  .pred-track {
+    height: 3px;
+    background: var(--bg3);
+    position: relative;
+    overflow: hidden;
+  }
+  .pred-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--blue-dim), var(--blue));
+    box-shadow: 0 0 6px var(--blue);
+    width: 0%;
+    transition: width 1.2s cubic-bezier(0.25,0.46,0.45,0.94);
+  }
+  .pred-source {
+    margin-top: 6px;
+    font-size: 9px;
+    color: var(--text-faint);
+    letter-spacing: 0.1em;
+    text-align: right;
+  }
+
+  /* disclaimer */
+  .disclaimer {
+    margin-top: 2rem;
+    border: 1px solid rgba(0,150,255,0.3);
+    background: rgba(0,80,160,0.07);
+    padding: 22px 24px;
+    position: relative;
+  }
+  .disclaimer::before {
+    content: '! NOTICE';
+    position: absolute;
+    top: -1px; left: 20px;
+    background: var(--bg);
+    padding: 0 8px;
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--blue);
+    text-shadow: 0 0 6px var(--blue-glow);
+  }
+  .disclaimer p {
+    font-family: var(--display);
+    font-size: 14px;
+    color: var(--text-dim);
+    line-height: 1.8;
+    margin-bottom: 12px;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+  }
+  .disclaimer p:last-child { margin-bottom: 0; }
+  .disclaimer strong {
+    color: #e8f4ff;
+    font-weight: 600;
+  }
+  .disclaimer .sources {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-faint);
+    letter-spacing: 0.05em;
+    margin-top: 14px;
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+  }
+
+  .data-exhaust {
+    margin-top: 1.5rem;
+    font-size: 9px;
+    color: var(--text-faint);
+    letter-spacing: 0.06em;
+    line-height: 2;
+    word-break: break-all;
+    opacity: 0.5;
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+  }
+
+  .restart-btn {
+    display: block;
+    margin: 2rem auto 0;
+    background: none;
+    border: none;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    color: var(--text-faint);
+    cursor: pointer;
+    padding: 8px;
+    transition: color 0.2s;
+  }
+  .restart-btn:hover { color: var(--text-dim); }
+
+  /* corner decorations */
+  .corner-decor {
+    position: fixed;
+    width: 60px; height: 60px;
+    z-index: 2;
+    pointer-events: none;
+    opacity: 0.3;
+  }
+  .corner-decor.tl { top: 16px; left: 16px; border-top: 1px solid var(--blue); border-left: 1px solid var(--blue); }
+  .corner-decor.tr { top: 16px; right: 16px; border-top: 1px solid var(--blue); border-right: 1px solid var(--blue); }
+  .corner-decor.bl { bottom: 16px; left: 16px; border-bottom: 1px solid var(--blue); border-left: 1px solid var(--blue); }
+  .corner-decor.br { bottom: 16px; right: 16px; border-bottom: 1px solid var(--blue); border-right: 1px solid var(--blue); }
+</style>
+</head>
+<body>
+
+<canvas id="particles"></canvas>
+<div class="corner-decor tl"></div>
+<div class="corner-decor tr"></div>
+<div class="corner-decor bl"></div>
+<div class="corner-decor br"></div>
+
+<div class="container">
+
+  <div class="top-bar">
+    <span class="top-bar-left">DATACORE SYSTEMS // CONSUMER ANALYTICS v4.1</span>
+    <span class="top-bar-right" id="clock">--:--:-- <span class="blink">■</span> LIVE</span>
+  </div>
+
+  <!-- INTRO -->
+  <div id="intro-screen" class="screen active">
+    <p class="intro-eyebrow">BEHAVIORAL PROFILING MODULE — INITIALIZED</p>
+
+    <svg class="hexagon-icon" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="36,4 64,20 64,52 36,68 8,52 8,20" stroke="#0066aa" stroke-width="1" fill="rgba(0,100,200,0.06)"/>
+      <polygon points="36,12 56,24 56,48 36,60 16,48 16,24" stroke="#00aaff" stroke-width="0.5" fill="none" opacity="0.4"/>
+      <circle cx="36" cy="36" r="8" stroke="#00aaff" stroke-width="1" fill="rgba(0,170,255,0.1)"/>
+      <line x1="36" y1="4" x2="36" y2="28" stroke="#00aaff" stroke-width="0.5" opacity="0.5"/>
+      <line x1="36" y1="44" x2="36" y2="68" stroke="#00aaff" stroke-width="0.5" opacity="0.5"/>
+      <line x1="8" y1="20" x2="28" y2="31" stroke="#00aaff" stroke-width="0.5" opacity="0.5"/>
+      <line x1="44" y1="41" x2="64" y2="52" stroke="#00aaff" stroke-width="0.5" opacity="0.5"/>
+      <line x1="64" y1="20" x2="44" y2="31" stroke="#00aaff" stroke-width="0.5" opacity="0.5"/>
+      <line x1="28" y1="41" x2="8" y2="52" stroke="#00aaff" stroke-width="0.5" opacity="0.5"/>
+    </svg>
+
+    <h1 class="intro-title">Tell us about yourself.</h1>
+    <p class="intro-sub">A brief consumer survey. This will only take a moment.</p>
+
+    <p class="intro-body">
+      Answer the following questions honestly.<br>
+      Your responses will be used to improve your experience.
+    </p>
+
+    <button class="start-btn" onclick="startQuiz()">BEGIN QUESTIONNAIRE</button>
+    <p class="consent-note">By continuing you agree to collection, analysis, and indefinite retention of your responses.</p>
+  </div>
+
+  <!-- QUESTION -->
+  <div id="question-screen" class="screen">
+    <div class="q-meta">
+      <span id="q-counter">QUESTION 1 OF 12</span>
+      <span class="live">● COLLECTING DATA</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+    <p class="data-log" id="data-log"></p>
+    <p class="q-number" id="q-number">INPUT_01 //</p>
+    <p class="q-text" id="q-text"></p>
+    <div class="options" id="options"></div>
+    <p class="collecting-msg" id="collecting-msg"></p>
+  </div>
+
+  <!-- LOADING -->
+  <div id="loading-screen" class="screen">
+    <p class="loading-title">PROCESSING — PLEASE STAND BY</p>
+    <div class="loading-list" id="loading-list"></div>
+    <p class="loading-pct" id="loading-pct">0%</p>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results-screen" class="screen">
+    <div class="results-header">
+      <div class="results-header-left">
+        <p class="eyebrow">PROFILE GENERATED — CONFIDENTIAL</p>
+        <p class="name">SUBJECT PROFILE #<span id="profile-id">—</span></p>
+      </div>
+      <div class="results-header-right" id="profile-meta"></div>
+    </div>
+    <div id="predictions-container"></div>
+    <div class="disclaimer">
+      <p>The predictions above were generated from your answers to <strong>12 harmless questions</strong>. You felt in control. You chose what to share. You could see exactly what was being asked.</p>
+      <p><strong>Real algorithmic profiling systems don't ask.</strong> Right now, data brokers hold an average of <strong>1,500+ data points</strong> on each American adult — collected silently from browsing history, location data, purchase records, app usage, and social media activity, without ever announcing themselves.</p>
+      <p>Companies like Acxiom, Oracle, and Experian sell consumer profiles that predict your health conditions, financial stress, political views, and purchasing behavior. These probabilistic scores are treated as fact — influencing what prices you're shown, whether you're approved for housing, and what information reaches you online.</p>
+      <p>The only difference between this experience and the real one:<br><strong>here, you knew it was happening.</strong></p>
+      <div class="sources">
+        SOURCES: Pew Research Center (2023) // Electronic Privacy Information Center // FTC Report on Data Brokers (2014) // Matz et al. (2024), Scientific Reports // Mei (2025), Advances in Economics, Management and Political Sciences
+      </div>
+    </div>
+    <div class="data-exhaust" id="data-exhaust"></div>
+    <button class="restart-btn" onclick="restart()">[ CLEAR SESSION — RESTART ]</button>
+  </div>
+
+</div>
+
+<script>
+// clock
+function updateClock() {
+  const now = new Date();
+  const t = [now.getHours(), now.getMinutes(), now.getSeconds()].map(n => String(n).padStart(2,'0')).join(':');
+  document.getElementById('clock').innerHTML = t + ' <span class="blink">■</span> LIVE';
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// particles
+(function() {
+  const canvas = document.getElementById('particles');
+  const ctx = canvas.getContext('2d');
+  let W, H, nodes = [], edges = [];
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  for (let i = 0; i < 60; i++) {
+    nodes.push({ x: Math.random()*1400, y: Math.random()*900, vx: (Math.random()-0.5)*0.3, vy: (Math.random()-0.5)*0.3 });
+  }
+  function draw() {
+    ctx.clearRect(0,0,W,H);
+    nodes.forEach(n => { n.x += n.vx; n.y += n.vy; if(n.x<0||n.x>W) n.vx*=-1; if(n.y<0||n.y>H) n.vy*=-1; });
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i+1; j < nodes.length; j++) {
+        const dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
+        const d = Math.sqrt(dx*dx+dy*dy);
+        if (d < 160) {
+          ctx.strokeStyle = `rgba(0,140,255,${(1-d/160)*0.25})`;
+          ctx.lineWidth = 0.5;
+          ctx.beginPath(); ctx.moveTo(nodes[i].x, nodes[i].y); ctx.lineTo(nodes[j].x, nodes[j].y); ctx.stroke();
+        }
+      }
+      ctx.fillStyle = 'rgba(0,170,255,0.4)';
+      ctx.beginPath(); ctx.arc(nodes[i].x, nodes[i].y, 1.5, 0, Math.PI*2); ctx.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+const questions = [
+  { text: "What time did you wake up this morning?", options: ["Before 6am","6–8am","8–10am","After 10am"], key: "wakeTime" },
+  { text: "How do you usually get to work or school?", options: ["Drive alone","Public transit","Walk or bike","Work from home"], key: "commute" },
+  { text: "What's your preferred way to pay for things?", options: ["Credit card","Debit card","Cash","Phone/digital wallet"], key: "payment" },
+  { text: "How often do you check your phone in the first 10 minutes of waking up?", options: ["Always","Usually","Rarely","Never"], key: "phoneMorning" },
+  { text: "How do you prefer to spend a free Sunday afternoon?", options: ["Outdoors / active","Shopping or errands","At home relaxing","Social plans with others"], key: "freeTime" },
+  { text: "When you can't sleep, what do you usually do?", options: ["Scroll on my phone","Watch something","Try to sleep anyway","Get up and do something"], key: "insomnia" },
+  { text: "How often do you buy something you didn't plan to buy?", options: ["Frequently","Sometimes","Rarely","Almost never"], key: "impulse" },
+  { text: "What best describes your relationship with your finances?", options: ["Carefully tracked","Roughly managed","Stressful to think about","I prefer not to think about it"], key: "finances" },
+  { text: "How would you describe your social media use?", options: ["Multiple times a day","Once a day","A few times a week","I avoid it"], key: "socialMedia" },
+  { text: "When you're anxious or stressed, what do you typically do?", options: ["Reach for my phone","Eat or drink something","Exercise or move","Isolate and withdraw"], key: "stress" },
+  { text: "How often do you read the terms and conditions before agreeing?", options: ["Never","Rarely","Sometimes","Always"], key: "tos" },
+  { text: "What's your gut feeling right now, answering these questions?", options: ["Comfortable — they're harmless","Slightly uneasy","I see where this is going","I want to stop"], key: "feeling" }
+];
+
+const loadingSteps = [
+  "Geolocating device","Parsing behavioral signals","Cross-referencing purchase history",
+  "Estimating income bracket","Inferring health risk factors","Analyzing emotional patterns",
+  "Building psychographic model","Matching to audience segments","Generating confidence scores","Compiling profile"
+];
+
+let answers = {}, currentQ = 0;
+
+function startQuiz() { showScreen('question-screen'); renderQuestion(); }
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function renderQuestion() {
+  const q = questions[currentQ];
+  document.getElementById('q-counter').textContent = `QUESTION ${currentQ+1} OF ${questions.length}`;
+  document.getElementById('q-number').textContent = `INPUT_${String(currentQ+1).padStart(2,'0')} //`;
+  document.getElementById('q-text').textContent = q.text;
+  document.getElementById('progress-fill').style.width = `${(currentQ/questions.length)*100}%`;
+  document.getElementById('collecting-msg').textContent = '';
+
+  const logMsgs = ["SESSION ACTIVE","BEHAVIORAL LOGGING ON","SIGNAL CAPTURE ENABLED","PROFILE UPDATING","DATA STREAM OPEN","INFERENCE ENGINE RUNNING"];
+  document.getElementById('data-log').textContent = logMsgs[currentQ % logMsgs.length];
+
+  const opts = document.getElementById('options');
+  opts.innerHTML = '';
+  q.options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-btn';
+    btn.textContent = opt;
+    btn.onclick = () => selectAnswer(opt, q.key, btn);
+    opts.appendChild(btn);
+  });
+}
+
+function selectAnswer(val, key, btn) {
+  document.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  answers[key] = val;
+  const msgs = ["DATA POINT LOGGED","SIGNAL CAPTURED","BEHAVIORAL MARKER RECORDED","PROFILE UPDATED","CROSS-REFERENCE COMPLETE","PATTERN NOTED","SEGMENT UPDATED","INFERENCE ADJUSTED","CONFIDENCE RECALCULATED"];
+  document.getElementById('collecting-msg').textContent = '> ' + msgs[currentQ % msgs.length];
+  setTimeout(() => {
+    currentQ++;
+    if (currentQ < questions.length) renderQuestion();
+    else startLoading();
+  }, 700);
+}
+
+function startLoading() {
+  showScreen('loading-screen');
+  const list = document.getElementById('loading-list');
+  list.innerHTML = '';
+  loadingSteps.forEach((step, i) => {
+    const div = document.createElement('div');
+    div.className = 'load-item';
+    div.id = `li-${i}`;
+    div.innerHTML = `<span>${step}</span><span class="status" id="ls-${i}">PENDING</span>`;
+    list.appendChild(div);
+  });
+  const pctEl = document.getElementById('loading-pct');
+  let i = 0;
+  const iv = setInterval(() => {
+    if (i < loadingSteps.length) {
+      document.getElementById(`li-${i}`).classList.add('done');
+      document.getElementById(`ls-${i}`).textContent = 'COMPLETE';
+      i++;
+      pctEl.textContent = Math.round((i/loadingSteps.length)*100) + '%';
+    } else {
+      clearInterval(iv);
+      setTimeout(showResults, 500);
+    }
+  }, 300);
+}
+
+function getPredictions() {
+  const a = answers;
+  const anxious = (a.stress==="Reach for my phone"||a.stress==="Isolate and withdraw") ? 84 : (a.stress==="Eat or drink something") ? 71 : 52;
+  const finStress = (a.finances==="Stressful to think about"||a.finances==="I prefer not to think about it") ? 88 : (a.finances==="Roughly managed") ? 63 : 34;
+  const impulseBuy = (a.impulse==="Frequently") ? 91 : (a.impulse==="Sometimes") ? 72 : 41;
+  const adSusc = (a.insomnia==="Scroll on my phone"||a.socialMedia==="Multiple times a day") ? 87 : (a.socialMedia==="Once a day") ? 68 : 44;
+  const privacyIgnore = (a.tos==="Never") ? 92 : (a.tos==="Rarely") ? 79 : (a.tos==="Sometimes") ? 51 : 22;
+  const politicalEng = (a.freeTime==="Social plans with others"||a.socialMedia==="Multiple times a day") ? 74 : 49;
+  return [
+    { category: "MENTAL HEALTH INFERENCE", label: "Likelihood of chronic anxiety or stress", conf: anxious },
+    { category: "FINANCIAL PROFILE", label: "Financial vulnerability score", conf: finStress },
+    { category: "CONSUMER BEHAVIOR", label: "Susceptibility to impulse purchasing", conf: impulseBuy },
+    { category: "AD TARGETING", label: "Responsiveness to targeted advertising", conf: adSusc },
+    { category: "CONSENT POSTURE", label: "Likelihood of ignoring data consent prompts", conf: privacyIgnore },
+    { category: "POLITICAL PROFILE", label: "Political engagement probability", conf: politicalEng },
+  ];
+}
+
+function showResults() {
+  showScreen('results-screen');
+  document.getElementById('profile-id').textContent = Math.random().toString(36).substr(2,9).toUpperCase();
+  const now = new Date();
+  document.getElementById('profile-meta').innerHTML =
+    `GENERATED: ${now.toLocaleDateString()}<br>DATA POINTS: ${questions.length}<br>STATUS: ACTIVE<br>CONFIDENCE: HIGH`;
+
+  const preds = getPredictions();
+  const container = document.getElementById('predictions-container');
+  container.innerHTML = '';
+  preds.forEach((p, i) => {
+    const card = document.createElement('div');
+    card.className = 'pred-card';
+    card.innerHTML = `
+      <div class="pred-top">
+        <span class="pred-category">${p.category}</span>
+        <span class="pred-pct" id="pct-${i}">0%</span>
+      </div>
+      <p class="pred-label">${p.label}</p>
+      <div class="pred-track"><div class="pred-fill" id="pbar-${i}"></div></div>
+      <p class="pred-source">INFERRED FROM BEHAVIORAL DATA // CONFIDENCE MODEL v2.3</p>`;
+    container.appendChild(card);
+    setTimeout(() => {
+      document.getElementById(`pbar-${i}`).style.width = p.conf + '%';
+      let start = 0, end = p.conf, dur = 1200, startTime = null;
+      function animNum(ts) {
+        if (!startTime) startTime = ts;
+        const prog = Math.min((ts-startTime)/dur, 1);
+        document.getElementById(`pct-${i}`).textContent = Math.round(prog*end) + '%';
+        if (prog < 1) requestAnimationFrame(animNum);
+      }
+      requestAnimationFrame(animNum);
+    }, 120 + i * 200);
+  });
+
+  const exhaust = [
+    `session_id: ${Math.random().toString(36).substr(2,16).toUpperCase()}`,
+    `device_fingerprint: ${Math.random().toString(36).substr(2,32)}`,
+    `ip_geolocation: inferred // timezone: captured`,
+    `interaction_events: ${questions.length * 4 + 23}`,
+    `avg_response_latency_ms: ${Math.round(900+Math.random()*1600)}`,
+    `mouse_movement_entropy: ${(Math.random()*2+1.2).toFixed(3)}`,
+    `scroll_depth: 100% // viewport_size: captured`,
+    `segment_ids: [behavioral_34f, impulse_b, anx_hi, finance_stress, mobile_heavy]`,
+    `sold_to: [adtech_broker_01, health_inference_co, political_data_llc, ...]`
+  ];
+  document.getElementById('data-exhaust').textContent = exhaust.join('  //  ');
+}
+
+function restart() {
+  answers = {}; currentQ = 0;
+  showScreen('intro-screen');
+}
+</script>
+</body>
+</html>
