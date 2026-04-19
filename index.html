@@ -589,6 +589,7 @@
     <p class="loading-pct" id="loading-pct">0%</p>
   </div>
 
+
   <!-- RESULTS -->
   <div id="results-screen" class="screen">
     <div class="results-header">
@@ -752,12 +753,95 @@ function startLoading() {
 
 function getPredictions() {
   const a = answers;
-  const anxious = (a.stress==="Reach for my phone"||a.stress==="Isolate and withdraw") ? 84 : (a.stress==="Eat or drink something") ? 71 : 52;
-  const finStress = (a.finances==="Stressful to think about"||a.finances==="I prefer not to think about it") ? 88 : (a.finances==="Roughly managed") ? 63 : 34;
-  const impulseBuy = (a.impulse==="Frequently") ? 91 : (a.impulse==="Sometimes") ? 72 : 41;
-  const adSusc = (a.insomnia==="Scroll on my phone"||a.socialMedia==="Multiple times a day") ? 87 : (a.socialMedia==="Once a day") ? 68 : 44;
-  const privacyIgnore = (a.tos==="Never") ? 92 : (a.tos==="Rarely") ? 79 : (a.tos==="Sometimes") ? 51 : 22;
-  const politicalEng = (a.freeTime==="Social plans with others"||a.socialMedia==="Multiple times a day") ? 74 : 49;
+
+  // clamp helper
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, Math.round(v)));
+
+  // ANXIETY — stress coping, insomnia behaviour, phone habits, wake time
+  let anxScore = 50;
+  if (a.stress==="Reach for my phone") anxScore += 22;
+  else if (a.stress==="Isolate and withdraw") anxScore += 18;
+  else if (a.stress==="Eat or drink something") anxScore += 10;
+  else anxScore -= 8; // exercise
+  if (a.insomnia==="Scroll on my phone") anxScore += 12;
+  else if (a.insomnia==="Watch something") anxScore += 6;
+  else if (a.insomnia==="Get up and do something") anxScore -= 4;
+  if (a.phoneMorning==="Always") anxScore += 8;
+  else if (a.phoneMorning==="Usually") anxScore += 4;
+  else if (a.phoneMorning==="Never") anxScore -= 6;
+  if (a.wakeTime==="Before 6am") anxScore += 4; // early rising can signal rumination
+  if (a.feeling==="I want to stop") anxScore += 6;
+  else if (a.feeling==="Comfortable — they're harmless") anxScore -= 4;
+  const anxious = clamp(anxScore, 18, 96);
+
+  // FINANCIAL VULNERABILITY — finances, payment, impulse, commute
+  let finScore = 45;
+  if (a.finances==="Stressful to think about") finScore += 28;
+  else if (a.finances==="I prefer not to think about it") finScore += 22;
+  else if (a.finances==="Roughly managed") finScore += 10;
+  else finScore -= 12; // carefully tracked
+  if (a.impulse==="Frequently") finScore += 14;
+  else if (a.impulse==="Sometimes") finScore += 7;
+  else if (a.impulse==="Almost never") finScore -= 8;
+  if (a.payment==="Cash") finScore -= 6; // cash users tend to be more budget-conscious
+  else if (a.payment==="Credit card") finScore += 4;
+  if (a.commute==="Public transit") finScore += 5;
+  else if (a.commute==="Drive alone") finScore += 2;
+  const finStress = clamp(finScore, 15, 95);
+
+  // IMPULSE PURCHASING — impulse, payment, free time, social media, insomnia
+  let impScore = 40;
+  if (a.impulse==="Frequently") impScore += 32;
+  else if (a.impulse==="Sometimes") impScore += 18;
+  else if (a.impulse==="Rarely") impScore -= 5;
+  else impScore -= 14;
+  if (a.payment==="Credit card"||a.payment==="Phone/digital wallet") impScore += 8;
+  else if (a.payment==="Cash") impScore -= 10;
+  if (a.freeTime==="Shopping or errands") impScore += 10;
+  if (a.socialMedia==="Multiple times a day") impScore += 7;
+  if (a.insomnia==="Scroll on my phone") impScore += 5; // late-night browsing → purchases
+  const impulseBuy = clamp(impScore, 12, 97);
+
+  // AD RESPONSIVENESS — social media, insomnia, phone habits, payment, feeling
+  let adScore = 45;
+  if (a.socialMedia==="Multiple times a day") adScore += 24;
+  else if (a.socialMedia==="Once a day") adScore += 12;
+  else if (a.socialMedia==="I avoid it") adScore -= 16;
+  if (a.insomnia==="Scroll on my phone") adScore += 14;
+  else if (a.insomnia==="Watch something") adScore += 6;
+  if (a.phoneMorning==="Always") adScore += 10;
+  else if (a.phoneMorning==="Usually") adScore += 5;
+  else if (a.phoneMorning==="Never") adScore -= 8;
+  if (a.payment==="Phone/digital wallet") adScore += 6;
+  if (a.feeling==="Comfortable — they're harmless") adScore += 5; // low guard = more susceptible
+  const adSusc = clamp(adScore, 14, 96);
+
+  // CONSENT IGNORANCE — tos, phone habits, feeling, social media
+  let tosScore = 50;
+  if (a.tos==="Never") tosScore += 32;
+  else if (a.tos==="Rarely") tosScore += 18;
+  else if (a.tos==="Sometimes") tosScore -= 5;
+  else tosScore -= 22; // always reads
+  if (a.phoneMorning==="Always") tosScore += 8; // habitual phone use = habit of tapping agree
+  else if (a.phoneMorning==="Never") tosScore -= 6;
+  if (a.feeling==="Comfortable — they're harmless") tosScore += 8;
+  else if (a.feeling==="I see where this is going") tosScore -= 10;
+  else if (a.feeling==="I want to stop") tosScore -= 6;
+  if (a.socialMedia==="Multiple times a day") tosScore += 6; // more accounts = more ToS clicked past
+  const privacyIgnore = clamp(tosScore, 10, 96);
+
+  // POLITICAL ENGAGEMENT — free time, social media, commute, feeling
+  let polScore = 45;
+  if (a.socialMedia==="Multiple times a day") polScore += 16;
+  else if (a.socialMedia==="Once a day") polScore += 8;
+  else if (a.socialMedia==="I avoid it") polScore -= 10;
+  if (a.freeTime==="Social plans with others") polScore += 12;
+  else if (a.freeTime==="Outdoors / active") polScore += 4;
+  if (a.commute==="Public transit") polScore += 6; // exposure to public discourse
+  if (a.feeling==="I see where this is going") polScore += 8; // critical awareness
+  else if (a.feeling==="I want to stop") polScore += 5;
+  if (a.wakeTime==="Before 6am") polScore += 4; // early risers skew more civically engaged
+  const politicalEng = clamp(polScore, 20, 92);
   return [
     { category: "MENTAL HEALTH INFERENCE", label: "Likelihood of chronic anxiety or stress", conf: anxious },
     { category: "FINANCIAL PROFILE", label: "Financial vulnerability score", conf: finStress },
